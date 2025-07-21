@@ -1,0 +1,56 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  GIT_DEPTH: 0 # Ensure full history is available if needed by some tools, though not strictly for this LaTeX setup
+
+# Job to build PDF
+build_pdf:
+  stage: build
+  image: texlive/texlive:latest # Use a Docker image with TeX Live
+  script:
+    - echo "Starting PDF compilation..."
+    - pdflatex main.tex # Compile your main LaTeX file to PDF
+    - echo "PDF compilation complete."
+  artifacts:
+    paths:
+      - main.pdf # Store the compiled PDF as an artifact
+    expire_in: 1 week # How long to keep the artifact in GitLab
+
+# Job to build HTML
+build_html:
+  stage: build
+  image: texlive/texlive:latest # Use the same TeX Live Docker image
+  script:
+    - echo "Starting HTML compilation with mk4ht..."
+    # Ensure custom.css is moved before mk4ht if you rely on it being next to main.tex
+    - mk4ht htlatex main.tex "xhtml,css=custom.css" "-p" # Compile LaTeX to HTML
+    - mkdir -p html_output # Create the directory for HTML output
+    - mv main.html html_output/ # Move the main HTML file
+    - if [ -f main.css ]; then mv main.css html_output/; fi # Move tex4ht's default CSS if generated
+    - if [ -f custom.css ]; then mv custom.css html_output/; fi # Move your custom CSS
+    - if [ -d main-images ]; then mv main-images html_output/; fi # Move images if any
+    - echo "HTML compilation complete."
+  artifacts:
+    paths:
+      - html_output/ # Store the HTML output directory as an artifact
+    expire_in: 1 week
+
+# Job to deploy to GitLab Pages
+pages:
+  stage: deploy
+  image: alpine/git # A minimal image, as we just need basic shell commands to move files
+  script:
+    - echo "Downloading artifacts..."
+    - cp build_pdf/main.pdf . # Copy PDF artifact (GitLab stages artifacts to job-specific folders)
+    - cp -r build_html/html_output . # Copy HTML artifact
+    - mkdir public # Create the public directory for GitLab Pages
+    - mv main.pdf public/ # Move PDF to public/
+    - mv html_output public/ # Move HTML output folder to public/
+    - echo "Files prepared for GitLab Pages deployment."
+  artifacts:
+    paths:
+      - public # This tells GitLab Pages to host content from this directory
+  rules:
+    - if: $CI_COMMIT_BRANCH == "tutorial" # Only run this job if the commit is on the 'tutorial' branch
