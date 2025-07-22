@@ -40,17 +40,17 @@ build_html:
 # Job to deploy to GitLab Pages
 pages:
   stage: deploy
-  image: alpine/git # A minimal image, as we just need basic shell commands to move files
+  image: alpine/git # The image that's causing the issue
   script:
-    - echo "Downloading artifacts..."
-    - cp build_pdf/main.pdf . # Copy PDF artifact (GitLab stages artifacts to job-specific folders)
-    - cp -r build_html/html_output . # Copy HTML artifact
-    - mkdir public # Create the public directory for GitLab Pages
-    - mv main.pdf public/ # Move PDF to public/
-    - mv html_output public/ # Move HTML output folder to public/
-    - echo "Files prepared for GitLab Pages deployment."
+    - sh -c "echo 'Downloading artifacts...'" # <--- Add sh -c ""
+    - sh -c "cp build_pdf/main.pdf ."        # <--- Add sh -c ""
+    - sh -c "cp -r build_html/html_output ." # <--- Add sh -c ""
+    - sh -c "mkdir public"                   # <--- Add sh -c ""
+    - sh -c "mv main.pdf public/"            # <--- Add sh -c ""
+    - sh -c "mv html_output public/"         # <--- Add sh -c ""
+    - sh -c "echo 'Files prepared for GitLab Pages deployment.'" # <--- Add sh -c ""
   artifacts:
     paths:
-      - public # This tells GitLab Pages to host content from this directory
+      - public
   rules:
-    - if: $CI_COMMIT_BRANCH == "tutorial" # Only run this job if the commit is on the 'tutorial' branch
+    - if: $CI_COMMIT_BRANCH == "tutorial"
